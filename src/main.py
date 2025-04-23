@@ -1,3 +1,5 @@
+import csv
+
 # Representação de uma tarefa
 class Tarefa:
     def __init__(self, id, quantum, cpus_necessarias, duracao_total):
@@ -7,55 +9,59 @@ class Tarefa:
         self.duracao_restante = duracao_total
         self.duracao_total = duracao_total
 
-# Inicialização das CPUs
 CPUS = [ [] for _ in range(4) ]  # cpu0, cpu1, cpu2, cpu3
 
-# Função de ordenação personalizada (Bubble Sort)
 def ordenar_tarefas(lista_tarefas):
     n = len(lista_tarefas)
     for i in range(n):
         for j in range(0, n - i - 1):
-            # Ordena em ordem decrescente de duracao_restante
+            # Ordena em ordem decrescente de quantum
             if lista_tarefas[j].quantum < lista_tarefas[j + 1].quantum:
                 lista_tarefas[j], lista_tarefas[j + 1] = lista_tarefas[j + 1], lista_tarefas[j]
     return lista_tarefas
 
-# Substituindo o deque e sorted por listas e a função de ordenação personalizada
-def simular_escalonador(lista_tarefas):
-    index_tempo = 0
-    fila = ordenar_tarefas(lista_tarefas)  # Ordena a lista de tarefas inicialmente
 
-    while fila or any(cpu for cpu in CPUS):
+def simular_escalonador(lista_tarefas):
+    fila = ordenar_tarefas(lista_tarefas)
+    
+    index_tempo = 0
+    while fila:
+
         # Verifica quais CPUs estão livres agora
         cpus_disponiveis = []
-        for cpu in enumerate(CPUS):
-            if not cpu[index_tempo]:
+        for i, cpu in enumerate(CPUS):
+            if index_tempo >= len(cpu) or not cpu[index_tempo]:
                 cpus_disponiveis.append(i)
 
-        while fila:
-            if len(cpus_disponiveis) >= fila[0].cpus_necessarias:
-                tarefa = fila.pop(0)  # Remove o primeiro elemento da lista
-                # Aloca CPUs
-                cpus_usadas = cpus_disponiveis[:tarefa.cpus_necessarias]
-                for i in cpus_usadas:
-                    CPUS[i].append(tarefa.id)
-                tempo_execucao = min(tarefa.quantum, tarefa.duracao_restante)
-                tarefa.duracao_restante -= tempo_execucao
-                tempo += tempo_execucao
-                if tarefa.duracao_restante > 0:
-                    fila.append(tarefa)  # volta pra fila se não acabou
-            else:
-                break  # se a de maior prioridade não couber, espera
-
-        fila = ordenar_tarefas(fila)  # Reordena a fila reativada
+        lista_tarefas_refeita = []
+        lista_tarefas_volta_fila = []
+        for i in range(len(fila)):
+            if len(cpus_disponiveis) < fila[i].cpus_necessarias: 
+                lista_tarefas_refeita.append(fila[i])
+                continue
+            tarefa = fila[i]
+            tempo_execucao = min(tarefa.quantum, tarefa.duracao_restante)
+            for _ in range(tarefa.cpus_necessarias):
+                cpu_em_uso = cpus_disponiveis.pop(0)
+                for _ in range(tempo_execucao // 5):
+                    CPUS[cpu_em_uso].append(tarefa.id)
+            tarefa.duracao_restante -= tempo_execucao
+            if tarefa.duracao_restante > 0:
+                lista_tarefas_volta_fila.append(tarefa)
+        lista_tarefas_refeita.extend(lista_tarefas_volta_fila)  
+        fila = ordenar_tarefas(lista_tarefas_refeita) 
         index_tempo += 1
 
     # Exibir resultados
-    for i, cpu in enumerate(CPUS):
-        print(f"CPU{i}: {cpu}")
-    print(f"\nTempo total decorrido: {tempo} segundos")
+    with open('resultado_escalonador.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["CPU;Tarefas"])
+        for i, cpu in enumerate(CPUS):
+            writer.writerow([f'CPU{i};', '; '.join(map(str, cpu))])
 
-# 🔧 Exemplo de entrada (pode ser substituído por qualquer LISTA_VM_X)
+    max_length = max(len(cpu) for cpu in CPUS)
+    print(f"Tempo decorrido: {max_length * 5} segundos")
+
 LISTA_VM_1 = [
     Tarefa("T1", 15, 1, 30),
     Tarefa("T2", 20, 2, 60),
