@@ -1,6 +1,3 @@
-import heapq
-from collections import deque
-
 # Representação de uma tarefa
 class Tarefa:
     def __init__(self, id, quantum, cpus_necessarias, duracao_total):
@@ -10,36 +7,34 @@ class Tarefa:
         self.duracao_restante = duracao_total
         self.duracao_total = duracao_total
 
-    def __lt__(self, other):
-        return self.quantum > other.quantum  # maior quantum = maior prioridade
-
 # Inicialização das CPUs
 CPUS = [ [] for _ in range(4) ]  # cpu0, cpu1, cpu2, cpu3
 
-# Simulação principal
+# Função de ordenação personalizada (Bubble Sort)
+def ordenar_tarefas(lista_tarefas):
+    n = len(lista_tarefas)
+    for i in range(n):
+        for j in range(0, n - i - 1):
+            # Ordena em ordem decrescente de duracao_restante
+            if lista_tarefas[j].quantum < lista_tarefas[j + 1].quantum:
+                lista_tarefas[j], lista_tarefas[j + 1] = lista_tarefas[j + 1], lista_tarefas[j]
+    return lista_tarefas
+
+# Substituindo o deque e sorted por listas e a função de ordenação personalizada
 def simular_escalonador(lista_tarefas):
-    tempo = 0
-    fila = deque(sorted(lista_tarefas, reverse=True))  # fila com tarefas ordenadas por prioridade
+    index_tempo = 0
+    fila = ordenar_tarefas(lista_tarefas)  # Ordena a lista de tarefas inicialmente
 
     while fila or any(cpu for cpu in CPUS):
-        tarefas_em_execucao = []
-
-        # Libera CPUs após cada quantum
-        cpus_livres = [i for i in range(4) if len(CPUS[i]) * 5 == tempo]
-
         # Verifica quais CPUs estão livres agora
-        cpus_ocupadas = set()
-        for i, cpu in enumerate(CPUS):
-            if len(cpu) * 5 > tempo:
-                cpus_ocupadas.add(i)
-
-        cpus_disponiveis = [i for i in range(4) if i not in cpus_ocupadas]
-
-        fila_reativada = deque()
+        cpus_disponiveis = []
+        for cpu in enumerate(CPUS):
+            if not cpu[index_tempo]:
+                cpus_disponiveis.append(i)
 
         while fila:
-            tarefa = fila.popleft()
-            if len(cpus_disponiveis) >= tarefa.cpus_necessarias:
+            if len(cpus_disponiveis) >= fila[0].cpus_necessarias:
+                tarefa = fila.pop(0)  # Remove o primeiro elemento da lista
                 # Aloca CPUs
                 cpus_usadas = cpus_disponiveis[:tarefa.cpus_necessarias]
                 for i in cpus_usadas:
@@ -48,12 +43,12 @@ def simular_escalonador(lista_tarefas):
                 tarefa.duracao_restante -= tempo_execucao
                 tempo += tempo_execucao
                 if tarefa.duracao_restante > 0:
-                    fila_reativada.append(tarefa)  # volta pra fila se não acabou
+                    fila.append(tarefa)  # volta pra fila se não acabou
             else:
-                fila_reativada.append(tarefa)  # não tem CPU suficiente, tenta depois
                 break  # se a de maior prioridade não couber, espera
 
-        fila = fila_reativada
+        fila = ordenar_tarefas(fila)  # Reordena a fila reativada
+        index_tempo += 1
 
     # Exibir resultados
     for i, cpu in enumerate(CPUS):
